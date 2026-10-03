@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Financial Analytics Hub — ExpenseIQ{% endblock %}
+{% block page_title %}Financial Analytics & Wealth Intelligence{% endblock %}
+
+{% block content %}
+<!-- Header Bar with Month Picker -->
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <h3 style="font-size:1.15rem; font-weight:800; margin:0;">{{ current_month|date:"F Y" }} Financial Intelligence</h3>
+    <span style="font-size:0.78rem; color:var(--text-muted);">Deep-dive payment method analysis, income vs outflow trends, and expenditure velocity</span>
+  </div>
+  <a href="{% url 'export_expenses_csv' %}" class="btn btn-ghost btn-sm">
+    <i class="bi bi-file-earmark-arrow-down-fill me-1"></i> Export Data CSV
+  </a>
+</div>
+
+<!-- Primary Cash Flow KPIs -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(16,185,129,0.12); color:#10b981;">
+        <i class="bi bi-arrow-down-left-circle-fill"></i>
+      </div>
+      <div class="stat-value text-success">+{{ currency_symbol }}{{ summary.total_income|floatformat:2 }}</div>
+      <div class="stat-label">Total Inflow (Income)</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(239,68,68,0.12); color:#ef4444;">
+        <i class="bi bi-arrow-up-right-circle-fill"></i>
+      </div>
+      <div class="stat-value text-danger">-{{ currency_symbol }}{{ summary.total_spent|floatformat:2 }}</div>
+      <div class="stat-label">Total Outflow (Expenses)</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(108,99,255,0.12); color:var(--accent);">
+        <i class="bi bi-piggy-bank-fill"></i>
+      </div>
+      <div class="stat-value {% if summary.net_cash_flow >= 0 %}text-success{% else %}text-danger{% endif %}">
+        {% if summary.net_cash_flow >= 0 %}+{% endif %}{{ currency_symbol }}{{ summary.net_cash_flow|floatformat:2 }}
+      </div>
+      <div class="stat-label">Net Monthly Cash Flow</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(245,158,11,0.12); color:#f59e0b;">
+        <i class="bi bi-percent"></i>
+      </div>
+      <div class="stat-value text-warning">{{ summary.savings_rate|floatformat:1 }}%</div>
+      <div class="stat-label">Net Savings Rate</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Grid -->
+<div class="row g-4 mb-4">
+  <!-- 6-Month Income vs Expense Trend -->
+  <div class="col-lg-8">
+    <div class="glass-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-800 m-0" style="font-size:1rem;">Income vs. Spending Comparison (6 Months)</h4>
+        <span class="badge bg-dark-subtle text-muted border">Cash Flow Trend</span>
+      </div>
+      <div style="height: 280px; position: relative;">
+        <canvas id="analyticsTrendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Methods Breakdown -->
+  <div class="col-lg-4">
+    <div class="glass-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-800 m-0" style="font-size:1rem;">Payment Method Share</h4>
+        <span class="badge bg-dark-subtle text-muted border">Channels</span>
+      </div>
+      <div style="height: 280px; position: relative; display: flex; align-items: center; justify-content: center;">
+        <canvas id="paymentChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Daily Spending Velocity & Top Transactions -->
+<div class="row g-4">
+  <!-- Daily Velocity -->
+  <div class="col-lg-7">
+    <div class="glass-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-800 m-0" style="font-size:1rem;">Daily Expenditure Velocity (Day 1 - {{ summary.days_in_month }})</h4>
+        <span class="small text-muted">Daily Spikes</span>
+      </div>
+      <div style="height: 240px; position: relative;">
+        <canvas id="dailyVelocityChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top 5 Largest Outflows -->
+  <div class="col-lg-5">
+    <div class="glass-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-800 m-0" style="font-size:1rem;">Top 5 Outflow Transactions</h4>
+        <a href="{% url 'expense_list' %}" class="btn btn-ghost btn-sm py-0 px-2">View All</a>
+      </div>
+      {% if top_expenses %}
+        <div class="d-flex flex-column gap-2">
+          {% for exp in top_expenses %}
+            <div class="d-flex align-items-center justify-content-between p-2 rounded" style="background:var(--input-bg); border:1px solid var(--card-border);">
+              <div class="d-flex align-items-center gap-2">
+                <div style="width:34px; height:34px; border-radius:10px; background:rgba(108,99,255,0.12); color:{{ exp.category.color }}; display:flex; align-items:center; justify-content:center;">
+                  <i class="bi {{ exp.category.icon }}"></i>
+                </div>
+                <div>
+                  <div class="fw-700" style="font-size:0.86rem;">{{ exp.category.name }}</div>
+                  <span style="font-size:0.72rem; color:var(--text-muted);">{{ exp.date|date:"M d" }} · {{ exp.payment_method }}</span>
+                </div>
+              </div>
+              <div class="text-end">
+                <span class="fw-800 text-danger" style="font-size:0.92rem;">-{{ currency_symbol }}{{ exp.amount|floatformat:2 }}</span>
+                {% if exp.notes %}
+                  <div style="font-size:0.7rem; color:var(--text-muted); max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ exp.notes }}</div>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-4 text-muted small">No transactions found for this period.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const currencySymbol = "{{ currency_symbol|escapejs }}";
+
+    // 1. Cash Flow Comparison (Bar + Line)
+    const trendData = JSON.parse('{{ trend_json|escapejs }}');
+    const trendCtx = document.getElementById('analyticsTrendChart');
+    if (trendCtx && trendData.labels) {
+      new Chart(trendCtx, {
+        type: 'bar',
+        data: {
+          labels: trendData.labels,
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Income (' + currencySymbol + ')',
+              data: trendData.income || [],
+              backgroundColor: 'rgba(16, 185, 129, 0.75)',
+              borderRadius: 6
+            },
+            {
+              type: 'bar',
+              label: 'Expenses (' + currencySymbol + ')',
+              data: trendData.expenses || trendData.data,
+              backgroundColor: 'rgba(239, 68, 68, 0.75)',
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', size: 11 }, usePointStyle: true } }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b' } },
+            y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b', callback: (v) => currencySymbol + v } }
+          }
+        }
+      });
+    }
+
+    // 2. Payment Method Distribution
+    const paymentData = JSON.parse('{{ payment_json|escapejs }}');
+    const payCtx = document.getElementById('paymentChart');
+    if (payCtx && paymentData.labels.length > 0) {
+      new Chart(payCtx, {
+        type: 'doughnut',
+        data: {
+          labels: paymentData.labels,
+          datasets: [{
+            data: paymentData.data,
+            backgroundColor: paymentData.colors,
+            borderWidth: 2,
+            borderColor: 'transparent'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '68%',
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, usePointStyle: true, padding: 12 } }
+          }
+        }
+      });
+    } else if (payCtx) {
+      payCtx.parentElement.innerHTML = '<div class="text-center text-muted small py-4">No payment data recorded</div>';
+    }
+
+    // 3. Daily Velocity Chart
+    const dailyData = JSON.parse('{{ daily_json|escapejs }}');
+    const dailyCtx = document.getElementById('dailyVelocityChart');
+    if (dailyCtx && dailyData.labels) {
+      new Chart(dailyCtx, {
+        type: 'line',
+        data: {
+          labels: dailyData.labels,
+          datasets: [{
+            label: 'Daily Outflow (' + currencySymbol + ')',
+            data: dailyData.data,
+            borderColor: '#6c63ff',
+            backgroundColor: 'rgba(108, 99, 255, 0.15)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.25,
+            pointRadius: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b', maxTicksLimit: 15 } },
+            y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b', callback: (v) => currencySymbol + v } }
+          }
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

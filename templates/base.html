@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}ExpenseIQ — Smart Personal Finance & Wealth Intelligence{% endblock %}</title>
+  <meta name="description" content="Next-generation personal finance tracker with real-time budget threshold alerts, cash flow analysis, bill subscriptions, and financial goals." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --accent: #6c63ff;
+      --accent-hover: #5b52e0;
+      --accent-glow: rgba(108, 99, 255, 0.28);
+      --bg-dark: #090a10;
+      --card-bg: rgba(22, 23, 39, 0.78);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover-border: rgba(108, 99, 255, 0.4);
+      --sidebar-bg: #0d0e17;
+      --sidebar-width: 260px;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
+      --success-color: #10b981;
+      --text-muted: #64748b;
+      --text-main: #f1f5f9;
+      --input-bg: rgba(255, 255, 255, 0.04);
+    }
+
+    [data-bs-theme="light"] {
+      --bg-dark: #f8fafc;
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --card-border: rgba(226, 232, 240, 0.9);
+      --card-hover-border: rgba(108, 99, 255, 0.45);
+      --sidebar-bg: #ffffff;
+      --text-muted: #64748b;
+      --text-main: #0f172a;
+      --input-bg: #ffffff;
+    }
+
+    * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
+    body { background: var(--bg-dark); color: var(--text-main); min-height: 100vh; overflow-x: hidden; transition: background-color 0.25s ease, color 0.25s ease; }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+    ::-webkit-scrollbar-thumb { background: rgba(108,99,255,0.3); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(108,99,255,0.6); }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed; top: 0; left: 0; height: 100vh;
+      width: var(--sidebar-width); background: var(--sidebar-bg);
+      border-right: 1px solid var(--card-border);
+      display: flex; flex-direction: column; z-index: 1050;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease;
+    }
+    .sidebar-logo {
+      padding: 1.35rem 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-logo .logo-icon {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: linear-gradient(135deg, #6c63ff, #a855f7);
+      box-shadow: 0 4px 15px rgba(108, 99, 255, 0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; color: white; flex-shrink: 0;
+    }
+    .sidebar-logo h1 { font-size: 1.2rem; font-weight: 800; color: var(--text-main); margin: 0; letter-spacing: -0.02em; }
+    .sidebar-logo span { font-size: 0.7rem; color: var(--text-muted); display: block; margin-top: 1px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .sidebar-nav { flex: 1; padding: 1.25rem 0.75rem; overflow-y: auto; }
+    .nav-section { margin-bottom: 1.4rem; }
+    .nav-section-label {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text-muted); padding: 0 0.75rem;
+      margin-bottom: 0.45rem;
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.62rem 0.85rem; border-radius: 10px;
+      color: #94a3b8; font-size: 0.86rem; font-weight: 600;
+      transition: all 0.2s ease; text-decoration: none; margin-bottom: 2px;
+    }
+    [data-bs-theme="light"] .nav-link { color: #475569; }
+    .nav-link:hover { background: rgba(108,99,255,0.12); color: #8b5cf6; transform: translateX(3px); }
+    .nav-link.active {
+      background: linear-gradient(135deg, rgba(108,99,255,0.22), rgba(168,85,247,0.14));
+      color: #a78bfa; border: 1px solid rgba(108,99,255,0.3);
+    }
+    [data-bs-theme="light"] .nav-link.active {
+      background: rgba(108,99,255,0.12); color: #6c63ff; font-weight: 700;
+    }
+    .nav-link .bi { font-size: 1.05rem; width: 20px; }
+    .sidebar-footer { padding: 1rem 0.75rem; border-top: 1px solid var(--card-border); }
+
+    /* Main layout */
+    .main-wrapper { margin-left: var(--sidebar-width); min-height: 100vh; transition: margin-left 0.3s ease; }
+    .top-bar {
+      background: var(--card-bg); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 0.85rem 2rem;
+      position: sticky; top: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .top-bar .page-title { font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; letter-spacing: -0.01em; }
+    .user-pill {
+      display: flex; align-items: center; gap: 0.6rem;
+      background: rgba(255,255,255,0.05); border-radius: 50px;
+      padding: 0.35rem 0.85rem; border: 1px solid var(--card-border);
+    }
+    [data-bs-theme="light"] .user-pill { background: rgba(0,0,0,0.04); }
+    .user-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; color: white;
+      box-shadow: 0 2px 10px rgba(108,99,255,0.3);
+    }
+    .main-content { padding: 2rem; }
+
+    /* Glass Cards */
+    .glass-card {
+      background: var(--card-bg); backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 18px; padding: 1.5rem;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    .glass-card:hover { border-color: var(--card-hover-border); box-shadow: 0 8px 30px var(--accent-glow); }
+    .stat-card {
+      background: var(--card-bg); backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 18px; padding: 1.35rem;
+      transition: all 0.25s ease;
+      position: relative; overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    .stat-card:hover { transform: translateY(-3px); border-color: var(--card-hover-border); box-shadow: 0 10px 30px var(--accent-glow); }
+    .stat-card .stat-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; margin-bottom: 0.85rem;
+    }
+    .stat-card .stat-value { font-size: 1.75rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; }
+    .stat-card .stat-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* Progress bars */
+    .progress { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    [data-bs-theme="light"] .progress { background: rgba(0,0,0,0.08); }
+    .progress-bar-normal { background: linear-gradient(90deg, #10b981, #34d399); }
+    .progress-bar-warning { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .progress-bar-danger { background: linear-gradient(90deg, #ef4444, #f87171); animation: pulse-red 1.5s ease-in-out infinite; }
+    @keyframes pulse-red { 0%,100% { opacity:1; } 50% { opacity:0.65; } }
+
+    /* Alert badges */
+    .badge-state-normal { background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-state-warning { background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-state-danger { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); animation: pulse-red 1.5s ease-in-out infinite; }
+
+    /* Forms */
+    .form-control, .form-select {
+      background: var(--input-bg) !important;
+      border: 1px solid var(--card-border) !important;
+      color: var(--text-main) !important; border-radius: 10px; padding: 0.6rem 0.9rem;
+      font-size: 0.88rem; transition: all 0.2s;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 3px var(--accent-glow) !important;
+    }
+    .form-label { font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* Buttons */
+    .btn-accent {
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      border: none; color: white !important; font-weight: 600;
+      border-radius: 10px; padding: 0.55rem 1.25rem; font-size: 0.88rem;
+      transition: all 0.2s ease; box-shadow: 0 4px 15px rgba(108,99,255,0.3);
+    }
+    .btn-accent:hover { transform: translateY(-1px); box-shadow: 0 8px 25px var(--accent-glow); }
+    .btn-ghost {
+      background: rgba(255,255,255,0.05); border: 1px solid var(--card-border);
+      color: var(--text-muted); border-radius: 10px; padding: 0.55rem 1.25rem; font-size: 0.88rem;
+      transition: all 0.2s ease; font-weight: 600;
+    }
+    [data-bs-theme="light"] .btn-ghost { background: rgba(0,0,0,0.04); color: #475569; }
+    .btn-ghost:hover { background: rgba(108,99,255,0.1); color: var(--accent); border-color: rgba(108,99,255,0.3); }
+
+    /* Data Table */
+    .data-table { width: 100%; border-collapse: separate; border-spacing: 0 0.45rem; }
+    .data-table thead th {
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-muted); padding: 0.6rem 1rem; font-weight: 700; border: none;
+    }
+    .data-table tbody tr {
+      background: rgba(255,255,255,0.02); border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+    [data-bs-theme="light"] .data-table tbody tr { background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .data-table tbody tr:hover { background: rgba(108,99,255,0.08); transform: scale(1.002); }
+    .data-table tbody td {
+      padding: 0.85rem 1rem; font-size: 0.88rem; color: var(--text-main);
+      border-top: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
+    }
+    .data-table tbody td:first-child { border-left: 1px solid var(--card-border); border-radius: 12px 0 0 12px; }
+    .data-table tbody td:last-child { border-right: 1px solid var(--card-border); border-radius: 0 12px 12px 0; }
+
+    /* Floating Quick Action Button */
+    .fab-btn {
+      position: fixed; bottom: 2rem; right: 2rem; width: 56px; height: 56px;
+      border-radius: 50%; background: linear-gradient(135deg, var(--accent), #a855f7);
+      color: white; border: none; box-shadow: 0 8px 25px rgba(108,99,255,0.45);
+      display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+      z-index: 1040; cursor: pointer; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .fab-btn:hover { transform: scale(1.1) rotate(90deg); color: white; }
+
+    /* Toast messages */
+    .toast-container { position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 9999; }
+    .alert-toast {
+      border-radius: 12px; backdrop-filter: blur(20px);
+      background: var(--card-bg);
+      border: 1px solid var(--card-border); color: var(--text-main);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      animation: slideUp 0.35s ease;
+    }
+    @keyframes slideUp { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
+
+    /* Auth pages */
+    .auth-wrapper {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 50% 0%, rgba(108,99,255,0.18) 0%, transparent 70%), var(--bg-dark);
+    }
+    .auth-card {
+      width: 100%; max-width: 440px;
+      background: var(--card-bg); backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px; padding: 2.5rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    }
+    .auth-logo {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; color: white; margin: 0 auto 1.5rem;
+      box-shadow: 0 8px 25px rgba(108,99,255,0.4);
+    }
+
+    /* Mobile Responsive Sidebar */
+    .mobile-toggler { display: none; background: none; border: none; color: var(--text-main); font-size: 1.4rem; cursor: pointer; }
+    @media (max-width: 991.98px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.show { transform: translateX(0); }
+      .main-wrapper { margin-left: 0; }
+      .mobile-toggler { display: block; }
+    }
+  </style>
+</head>
+<body>
+{% if user.is_authenticated %}
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i class="bi bi-wallet2"></i></div>
+      <div>
+        <h1>ExpenseIQ</h1>
+        <span>Wealth & Finance</span>
+      </div>
+      <button class="mobile-toggler ms-auto d-lg-none" id="sidebarCloseBtn" style="font-size:1.1rem; color:#64748b;">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-label">Command Center</div>
+        <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+          <i class="bi bi-grid-1x2-fill"></i> Dashboard
+        </a>
+        <a href="{% url 'analytics_view' %}" class="nav-link {% if request.resolver_match.url_name == 'analytics_view' %}active{% endif %}">
+          <i class="bi bi-bar-chart-line-fill"></i> Analytics Hub
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Cash Flow & Transactions</div>
+        <a href="{% url 'income_list' %}" class="nav-link {% if 'income' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="bi bi-arrow-down-left-circle-fill text-success"></i> Income & Earnings
+        </a>
+        <a href="{% url 'expense_list' %}" class="nav-link {% if 'expense' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="bi bi-arrow-up-right-circle-fill text-danger"></i> Expenses Log
+        </a>
+        <a href="{% url 'subscription_list' %}" class="nav-link {% if 'subscription' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="bi bi-arrow-repeat text-info"></i> Recurring & Bills
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Planning & Growth</div>
+        <a href="{% url 'budget_list' %}" class="nav-link {% if 'budget' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="bi bi-pie-chart-fill" style="color:#a855f7;"></i> Monthly Budgets
+        </a>
+        <a href="{% url 'goal_list' %}" class="nav-link {% if 'goal' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="bi bi-bullseye text-warning"></i> Savings Goals
+        </a>
+        <a href="{% url 'category_list' %}" class="nav-link {% if 'category' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="bi bi-tags-fill"></i> Categories
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Data Tools</div>
+        <a href="{% url 'import_expenses_csv' %}" class="nav-link {% if request.resolver_match.url_name == 'import_expenses_csv' %}active{% endif %}">
+          <i class="bi bi-file-earmark-arrow-up-fill"></i> Import Bank CSV
+        </a>
+        <a href="{% url 'export_expenses_csv' %}" class="nav-link">
+          <i class="bi bi-file-earmark-arrow-down-fill"></i> Export Statement
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Preferences</div>
+        <a href="{% url 'currency_settings' %}" class="nav-link {% if request.resolver_match.url_name == 'currency_settings' %}active{% endif %}">
+          <i class="bi bi-currency-exchange"></i> Currency: {{ currency_symbol }} ({{ currency_code }})
+        </a>
+      </div>
+    </div>
+
+    <div class="sidebar-footer d-flex align-items-center justify-content-between">
+      <button class="btn btn-ghost btn-sm py-1 px-2" id="themeToggleBtn" title="Toggle Dark/Light Mode">
+        <i class="bi bi-moon-stars" id="themeIcon"></i>
+      </button>
+      <button class="btn btn-ghost btn-sm py-1 px-2" data-bs-toggle="modal" data-bs-target="#shortcutsModal" title="Keyboard Shortcuts (?)">
+        <i class="bi bi-keyboard"></i>
+      </button>
+      <a href="{% url 'logout' %}" class="btn btn-ghost btn-sm py-1 px-3 text-danger border-danger-subtle" title="Sign Out">
+        <i class="bi bi-box-arrow-left me-1"></i> Exit
+      </a>
+    </div>
+  </nav>
+
+  <!-- Main wrapper -->
+  <div class="main-wrapper">
+    <div class="top-bar">
+      <div class="d-flex align-items-center gap-3">
+        <button class="mobile-toggler d-lg-none" id="sidebarToggleBtn">
+          <i class="bi bi-list"></i>
+        </button>
+        <h2 class="page-title">{% block page_title %}Dashboard{% endblock %}</h2>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-accent btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+          <i class="bi bi-plus-lg"></i>
+          <span class="d-none d-sm-inline">Quick Add</span>
+          <kbd class="ms-1 px-1 py-0 bg-dark text-white rounded small d-none d-md-inline" style="font-size:0.68rem;">E</kbd>
+        </button>
+        <a href="{% url 'currency_settings' %}" title="Change Currency" style="text-decoration:none;">
+          <div style="background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.25);border-radius:50px;padding:0.35rem 0.85rem;font-size:0.82rem;font-weight:700;color:#a78bfa;display:flex;align-items:center;gap:0.4rem;">
+            <i class="bi bi-currency-exchange"></i>
+            {{ currency_symbol }}&nbsp;{{ currency_code }}
+          </div>
+        </a>
+        <div class="user-pill">
+          <div class="user-avatar">{{ user.username|first|upper }}</div>
+          <span style="font-size:0.85rem; font-weight:600;">{{ user.username }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <!-- Flash messages -->
+      {% if messages %}
+        <div class="toast-container">
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible alert-toast d-flex align-items-center gap-2 mb-2 p-3" role="alert">
+              <i class="bi bi-info-circle-fill" style="color:var(--accent); font-size:1.1rem;"></i>
+              <span class="fw-500">{{ message }}</span>
+              <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+
+  <!-- Floating Action Button for Quick Add -->
+  <button class="fab-btn" data-bs-toggle="modal" data-bs-target="#quickAddModal" title="Quick Add (Press 'E')">
+    <i class="bi bi-plus-lg"></i>
+  </button>
+
+  <!-- Global Quick Add Modal -->
+  <div class="modal fade" id="quickAddModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-card p-0" style="border-radius:20px; overflow:hidden;">
+        <div class="modal-header border-bottom p-3" style="border-color:var(--card-border) !important;">
+          <ul class="nav nav-pills w-100 gap-2" role="tablist">
+            <li class="nav-item flex-fill" role="presentation">
+              <button class="nav-link active w-100 py-2 fw-700" id="tab-expense" data-bs-toggle="pill" data-bs-target="#quick-expense-pane" type="button" role="tab">
+                <i class="bi bi-arrow-up-right-circle-fill text-danger me-1"></i> Log Expense
+              </button>
+            </li>
+            <li class="nav-item flex-fill" role="presentation">
+              <button class="nav-link w-100 py-2 fw-700" id="tab-income" data-bs-toggle="pill" data-bs-target="#quick-income-pane" type="button" role="tab">
+                <i class="bi bi-arrow-down-left-circle-fill text-success me-1"></i> Record Income
+              </button>
+            </li>
+          </ul>
+        </div>
+        <div class="modal-body p-4">
+          <div class="tab-content">
+            <!-- Expense Tab -->
+            <div class="tab-pane fade show active" id="quick-expense-pane" role="tabpanel">
+              <form method="post" action="{% url 'expense_create' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}" />
+                <div class="row g-3 mb-3">
+                  <div class="col-sm-6">
+                    <label class="form-label">Amount ({{ currency_symbol }})</label>
+                    <input type="number" name="amount" step="0.01" min="0.01" class="form-control" placeholder="0.00" required />
+                  </div>
+                  <div class="col-sm-6">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control" value="{% now 'Y-m-d' %}" required />
+                  </div>
+                </div>
+                <div class="row g-3 mb-3">
+                  <div class="col-sm-6">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-select" required>
+                      <option value="">Select or Type...</option>
+                      {% for cat in user.categories.all %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-sm-6">
+                    <label class="form-label">Payment Method</label>
+                    <select name="payment_method" class="form-select">
+                      <option value="UPI / Card">UPI / Card</option>
+                      <option value="Credit Card">Credit Card</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Net Banking">Net Banking</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Notes / Merchant</label>
+                  <input type="text" name="notes" class="form-control" placeholder="e.g. Starbucks, Grocery store..." />
+                </div>
+                <button type="submit" class="btn btn-accent w-100 py-2">
+                  <i class="bi bi-check-lg me-1"></i> Save Expense
+                </button>
+              </form>
+            </div>
+
+            <!-- Income Tab -->
+            <div class="tab-pane fade" id="quick-income-pane" role="tabpanel">
+              <form method="post" action="{% url 'income_create' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}" />
+                <div class="row g-3 mb-3">
+                  <div class="col-sm-6">
+                    <label class="form-label">Amount ({{ currency_symbol }})</label>
+                    <input type="number" name="amount" step="0.01" min="0.01" class="form-control" placeholder="0.00" required />
+                  </div>
+                  <div class="col-sm-6">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control" value="{% now 'Y-m-d' %}" required />
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Income Source</label>
+                  <select name="source" class="form-select" required>
+                    <option value="Salary">Salary / Primary Job</option>
+                    <option value="Freelance">Freelance / Consulting</option>
+                    <option value="Business">Business / Sales</option>
+                    <option value="Investments">Investments / Dividends</option>
+                    <option value="Gifts">Gifts / Bonus</option>
+                    <option value="Other">Other Income</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Notes / Memo</label>
+                  <input type="text" name="notes" class="form-control" placeholder="Employer, client, or memo..." />
+                </div>
+                <button type="submit" class="btn btn-accent w-100 py-2" style="background:linear-gradient(135deg, #10b981, #059669);">
+                  <i class="bi bi-check-lg me-1"></i> Record Income
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div class="modal fade" id="shortcutsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content glass-card p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h5 class="m-0 fw-700" style="font-size:1.05rem;"><i class="bi bi-keyboard me-2"></i>Shortcuts</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="d-flex flex-column gap-2 small">
+          <div class="d-flex justify-content-between align-items-center">
+            <span>Quick Log Expense</span>
+            <kbd class="px-2 py-1 bg-dark text-white rounded">E</kbd>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span>Quick Record Income</span>
+            <kbd class="px-2 py-1 bg-dark text-white rounded">I</kbd>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span>Show Shortcuts</span>
+            <kbd class="px-2 py-1 bg-dark text-white rounded">?</kbd>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span>Toggle Dark/Light</span>
+            <kbd class="px-2 py-1 bg-dark text-white rounded">T</kbd>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% else %}
+  {% block auth_content %}{% endblock %}
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Theme toggle logic with localStorage persistence
+  const htmlTag = document.documentElement;
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const themeIcon = document.getElementById('themeIcon');
+
+  function applyTheme(theme) {
+    htmlTag.setAttribute('data-bs-theme', theme);
+    localStorage.setItem('expenseiq_theme', theme);
+    if (themeIcon) {
+      if (theme === 'light') {
+        themeIcon.className = 'bi bi-sun-fill text-warning';
+      } else {
+        themeIcon.className = 'bi bi-moon-stars';
+      }
+    }
+  }
+
+  const savedTheme = localStorage.getItem('expenseiq_theme') || 'dark';
+  applyTheme(savedTheme);
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      const current = htmlTag.getAttribute('data-bs-theme');
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+  }
+
+  // Keyboard Shortcuts (E for Expense, I for Income, ? for Modal, T for Theme)
+  document.addEventListener('keydown', (e) => {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+    if (e.key === 'e' || e.key === 'E') {
+      e.preventDefault();
+      const modal = new bootstrap.Modal(document.getElementById('quickAddModal'));
+      document.getElementById('tab-expense').click();
+      modal.show();
+    } else if (e.key === 'i' || e.key === 'I') {
+      e.preventDefault();
+      const modal = new bootstrap.Modal(document.getElementById('quickAddModal'));
+      document.getElementById('tab-income').click();
+      modal.show();
+    } else if (e.key === '?') {
+      e.preventDefault();
+      new bootstrap.Modal(document.getElementById('shortcutsModal')).show();
+    } else if (e.key === 't' || e.key === 'T') {
+      if (themeToggleBtn) themeToggleBtn.click();
+    }
+  });
+
+  // Mobile sidebar toggle logic
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('sidebarToggleBtn');
+  const closeBtn = document.getElementById('sidebarCloseBtn');
+  if (toggleBtn && sidebar) {
+    toggleBtn.addEventListener('click', () => sidebar.classList.add('show'));
+  }
+  if (closeBtn && sidebar) {
+    closeBtn.addEventListener('click', () => sidebar.classList.remove('show'));
+  }
+
+  // Auto-dismiss toasts after 4s
+  document.querySelectorAll('.alert-toast').forEach(el => {
+    setTimeout(() => {
+      const bs = bootstrap.Alert.getOrCreateInstance(el);
+      if (bs) bs.close();
+    }, 4500);
+  });
+</script>
+</body>
+</html>
+

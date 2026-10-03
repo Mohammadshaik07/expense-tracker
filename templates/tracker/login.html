@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block auth_content %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="auth-logo"><i class="bi bi-wallet2"></i></div>
+    <h2 class="text-center fw-700 mb-1" style="font-size:1.5rem;">Welcome back</h2>
+    <p class="text-center mb-4" style="color:#64748b; font-size:0.9rem;">Sign in to your ExpenseIQ account</p>
+
+    {% if error %}
+      <div class="alert alert-danger d-flex align-items-center gap-2 mb-3" style="border-radius:10px; font-size:0.88rem;">
+        <i class="bi bi-exclamation-circle-fill"></i> {{ error }}
+      </div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label">Username</label>
+        <div class="input-group">
+          <span class="input-group-text" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-right:none;color:#64748b;">
+            <i class="bi bi-person"></i>
+          </span>
+          <input type="text" name="username" class="form-control" placeholder="Enter username" required style="border-left:none;" />
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label">Password</label>
+        <div class="input-group">
+          <span class="input-group-text" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-right:none;color:#64748b;">
+            <i class="bi bi-lock"></i>
+          </span>
+          <input type="password" name="password" class="form-control" placeholder="Enter password" required style="border-left:none;" />
+        </div>
+      </div>
+      <button type="submit" class="btn btn-accent w-100 py-2">
+        <i class="bi bi-arrow-right-circle me-2"></i>Sign In
+      </button>
+    </form>
+
+    <hr style="border-color:rgba(255,255,255,0.07); margin: 1.5rem 0;" />
+    <p class="text-center mb-0" style="font-size:0.88rem; color:#64748b;">
+      Don't have an account?
+      <a href="{% url 'register' %}" style="color:#6c63ff; font-weight:600; text-decoration:none;">Create one</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

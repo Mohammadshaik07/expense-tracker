@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Financial Goals & Milestones — ExpenseIQ{% endblock %}
+{% block page_title %}Financial Savings Goals{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <h3 style="font-size:1.15rem; font-weight:800; margin:0;">Wealth Goals & Target Milestones</h3>
+    <span style="font-size:0.78rem; color:var(--text-muted);">Set clear targets for emergency funds, vacations, gadgets, or investments</span>
+  </div>
+  <a href="{% url 'goal_create' %}" class="btn btn-accent btn-sm">
+    <i class="bi bi-plus-lg me-1"></i> Create New Goal
+  </a>
+</div>
+
+<!-- Total Target vs Saved Overview -->
+<div class="glass-card mb-4 p-4">
+  <div class="row align-items-center g-3">
+    <div class="col-md-7">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-trophy-fill text-warning" style="font-size:1.3rem;"></i>
+        <span class="fw-800" style="font-size:1.05rem;">Overall Portfolio Savings Progress</span>
+      </div>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
+        You have saved <strong class="text-success">{{ currency_symbol }}{{ total_saved|floatformat:2 }}</strong> out of your total milestones target of <strong>{{ currency_symbol }}{{ total_target|floatformat:2 }}</strong>.
+      </p>
+    </div>
+    <div class="col-md-5 text-md-end">
+      <div class="fw-800 fs-3" style="color:var(--accent);">{{ overall_progress|floatformat:1 }}%</div>
+      <span class="small text-muted">Total Milestone Completion</span>
+    </div>
+  </div>
+  <div class="progress mt-3" style="height:10px;">
+    <div class="progress-bar progress-bar-normal" style="width:{{ overall_progress }}%;"></div>
+  </div>
+</div>
+
+<!-- Goals Grid -->
+<div class="row g-4">
+  {% if goals %}
+    {% for goal in goals %}
+      <div class="col-md-6 col-xl-4">
+        <div class="glass-card h-100 d-flex flex-column justify-content-between" style="border-top: 4px solid {{ goal.color }};">
+          <div>
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div class="d-flex align-items-center gap-2">
+                <div style="width:38px; height:38px; border-radius:12px; background:rgba(255,255,255,0.06); color:{{ goal.color }}; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                  <i class="bi {{ goal.icon }}"></i>
+                </div>
+                <div>
+                  <h4 style="font-size:1rem; font-weight:800; margin:0;">{{ goal.title }}</h4>
+                  {% if goal.target_date %}
+                    <span style="font-size:0.72rem; color:var(--text-muted);">Target: {{ goal.target_date|date:"M d, Y" }}</span>
+                  {% endif %}
+                </div>
+              </div>
+              <span class="badge rounded-pill bg-success-subtle text-success fw-700" style="font-size:0.75rem;">
+                {{ goal.percent_achieved|floatformat:0 }}%
+              </span>
+            </div>
+
+            {% if goal.notes %}
+              <p style="font-size:0.8rem; color:var(--text-muted); line-height:1.4;" class="mb-3">{{ goal.notes }}</p>
+            {% endif %}
+
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="small text-muted">Saved</span>
+                <span class="fw-800" style="font-size:0.95rem;">
+                  {{ currency_symbol }}{{ goal.current_amount|floatformat:2 }} <span style="font-size:0.78rem; font-weight:normal; color:var(--text-muted);">of {{ currency_symbol }}{{ goal.target_amount|floatformat:2 }}</span>
+                </span>
+              </div>
+              <div class="progress" style="height:8px;">
+                <div class="progress-bar" style="width:{{ goal.percent_achieved }}%; background:{{ goal.color }};"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-top d-flex justify-content-between align-items-center" style="border-color:var(--card-border) !important;">
+            <button class="btn btn-accent btn-sm py-1 px-3" data-bs-toggle="modal" data-bs-target="#depositModal-{{ goal.pk }}">
+              <i class="bi bi-plus-circle me-1"></i> Deposit
+            </button>
+            <div class="d-flex gap-1">
+              <a href="{% url 'goal_edit' goal.pk %}" class="btn btn-ghost btn-sm py-1 px-2" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <a href="{% url 'goal_delete' goal.pk %}" class="btn btn-ghost btn-sm py-1 px-2 text-danger" title="Delete">
+                <i class="bi bi-trash"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deposit Contribution Modal -->
+      <div class="modal fade" id="depositModal-{{ goal.pk }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+          <div class="modal-content glass-card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="fw-800 m-0" style="font-size:1rem;">Add to "{{ goal.title }}"</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'goal_contribute' goal.pk %}">
+              {% csrf_token %}
+              <div class="mb-3">
+                <label class="form-label">Deposit Amount ({{ currency_symbol }})</label>
+                <input type="number" name="amount" step="0.01" min="0.01" class="form-control" placeholder="0.00" required />
+              </div>
+              <button type="submit" class="btn btn-accent w-100 py-2">
+                <i class="bi bi-check-lg me-1"></i> Confirm Deposit
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="col-12">
+      <div class="glass-card text-center py-5" style="color:var(--text-muted);">
+        <i class="bi bi-bullseye" style="font-size:2.8rem; display:block; margin-bottom:0.75rem; color:var(--accent);"></i>
+        <h4 class="fw-800 text-white mb-2" style="font-size:1.1rem;">No Savings Goals Set Yet</h4>
+        <p class="mb-3 small">Create a targeted milestone like Emergency Fund, Dream Vacation, or Gadget Purchase.</p>
+        <a href="{% url 'goal_create' %}" class="btn btn-accent btn-sm">Create First Goal</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Currency Settings — ExpenseIQ{% endblock %}
+{% block page_title %}Currency Settings{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="glass-card">
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#6c63ff,#a855f7);display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:white;flex-shrink:0;">
+          {{ currency_symbol }}
+        </div>
+        <div>
+          <h3 style="font-size:1.05rem;font-weight:600;margin:0;">Display Currency</h3>
+          <p style="color:#64748b;font-size:0.82rem;margin:0;">All amounts across the app will be shown in your chosen currency.</p>
+        </div>
+      </div>
+
+      <!-- Current currency badge -->
+      <div class="mb-4 p-3" style="background:rgba(108,99,255,0.08);border:1px solid rgba(108,99,255,0.2);border-radius:12px;">
+        <div style="font-size:0.78rem;color:#64748b;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.25rem;">Currently Active</div>
+        <div style="font-size:1.4rem;font-weight:700;color:#e2e8f0;">
+          {{ currency_symbol }}&nbsp;
+          <span style="font-size:0.9rem;color:#6c63ff;font-weight:600;">{{ currency_code }}</span>
+        </div>
+      </div>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-4">
+          <label class="form-label" style="font-size:0.88rem;font-weight:600;">Choose a Currency</label>
+          {{ form.currency }}
+          <div class="mt-2" style="font-size:0.78rem;color:#475569;">
+            <i class="bi bi-info-circle me-1"></i>
+            This only changes how amounts are displayed — it does not convert values.
+          </div>
+        </div>
+        <button type="submit" class="btn btn-accent w-100 py-2" style="font-size:0.95rem;">
+          <i class="bi bi-check-circle-fill me-2"></i>Save Currency Preference
+        </button>
+      </form>
+    </div>
+
+    <!-- Currency preview grid (static list, no custom filter needed) -->
+    <div class="glass-card mt-3">
+      <h4 style="font-size:0.85rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem;">All Supported Currencies</h4>
+      <div class="row g-2">
+        {% for code, label in form.fields.currency.choices %}
+          <div class="col-6 col-md-4">
+            <div style="background:{% if code == currency_code %}rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.4){% else %}rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07){% endif %};border-radius:10px;padding:0.6rem 0.85rem;">
+              <div style="font-size:0.8rem;font-weight:600;color:{% if code == currency_code %}#6c63ff{% else %}#94a3b8{% endif %};">{{ code }}</div>
+              <div style="font-size:0.78rem;color:#475569;">{{ label }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

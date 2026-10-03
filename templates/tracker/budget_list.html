@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Budgets — ExpenseIQ{% endblock %}
+{% block page_title %}Budgets{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <p style="color:#64748b; margin:0; font-size:0.88rem;">Set monthly spending limits per category.</p>
+  <a href="{% url 'budget_create' %}" class="btn btn-accent">
+    <i class="bi bi-plus-lg me-1"></i> Set Budget
+  </a>
+</div>
+
+{% if budgets %}
+  <div class="glass-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Month</th>
+          <th>Monthly Limit</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for budget in budgets %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:0.6rem;">
+                <div style="width:32px;height:32px;border-radius:8px;background:rgba(168,85,247,0.15);color:#a855f7;display:flex;align-items:center;justify-content:center;">
+                  <i class="bi bi-pie-chart-fill"></i>
+                </div>
+                <span style="font-weight:500;color:#e2e8f0;">{{ budget.category.name }}</span>
+              </div>
+            </td>
+            <td style="color:#94a3b8;">{{ budget.month_year|date:"F Y" }}</td>
+            <td>
+              <span style="font-weight:600; color:#10b981; font-size:1rem;">{{ currency_symbol }}{{ budget.monthly_limit|floatformat:2 }}</span>
+            </td>
+            <td class="text-end">
+              <a href="{% url 'budget_edit' budget.pk %}" class="btn btn-ghost btn-sm me-1">
+                <i class="bi bi-pencil-fill"></i>
+              </a>
+              <a href="{% url 'budget_delete' budget.pk %}" class="btn btn-sm" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);border-radius:10px;">
+                <i class="bi bi-trash-fill"></i>
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="glass-card text-center py-5">
+    <i class="bi bi-pie-chart" style="font-size:3rem; color:#475569; display:block; margin-bottom:1rem;"></i>
+    <h3 style="font-size:1.1rem; font-weight:600; margin-bottom:0.5rem;">No budgets set</h3>
+    <p style="color:#475569; font-size:0.88rem; margin-bottom:1.5rem;">Set monthly limits to get visual spending alerts.</p>
+    <a href="{% url 'budget_create' %}" class="btn btn-accent">
+      <i class="bi bi-plus-lg me-1"></i> Set First Budget
+    </a>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Delete Subscription — ExpenseIQ{% endblock %}
+{% block page_title %}Delete Subscription{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-5">
+    <div class="glass-card" style="border-color:rgba(239,68,68,0.3);">
+      <div style="text-align:center; margin-bottom:1.5rem;">
+        <div style="width:56px;height:56px;border-radius:16px;background:rgba(239,68,68,0.1);color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto 1rem;">
+          <i class="bi bi-trash-fill"></i>
+        </div>
+        <h3 style="font-size:1.1rem; font-weight:700;">Remove "{{ object.name }}"?</h3>
+        <p style="color:var(--text-muted); font-size:0.88rem; margin-top:0.5rem;">
+          This will delete this subscription from your recurring bills list. Any previously logged expenses will not be affected.
+        </p>
+      </div>
+      <form method="post" class="d-flex gap-2 justify-content-center">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm px-4 py-2" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:10px;font-weight:600;">
+          <i class="bi bi-trash-fill me-1"></i> Yes, Delete
+        </button>
+        <a href="{% url 'subscription_list' %}" class="btn btn-ghost btn-sm px-4 py-2">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

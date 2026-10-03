@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Recurring Bills & Subscriptions — ExpenseIQ{% endblock %}
+{% block page_title %}Recurring Bills & Subscriptions{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <h3 style="font-size:1.15rem; font-weight:800; margin:0;">Subscription & Bill Tracker</h3>
+    <span style="font-size:0.78rem; color:var(--text-muted);">Stay on top of Netflix, Spotify, AWS, Gym, Wifi, Rent, and Insurance</span>
+  </div>
+  <a href="{% url 'subscription_create' %}" class="btn btn-accent btn-sm">
+    <i class="bi bi-plus-lg me-1"></i> Add Subscription
+  </a>
+</div>
+
+<!-- Financial Commitment Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(59,130,246,0.12); color:#3b82f6;">
+        <i class="bi bi-arrow-repeat"></i>
+      </div>
+      <div class="stat-value text-info">{{ currency_symbol }}{{ monthly_cost|floatformat:2 }}</div>
+      <div class="stat-label">Monthly Fixed Commitment</div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(168,85,247,0.12); color:#a855f7;">
+        <i class="bi bi-calendar-event"></i>
+      </div>
+      <div class="stat-value">{{ currency_symbol }}{{ yearly_cost|floatformat:2 }}</div>
+      <div class="stat-label">Projected Annual Cost</div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(16,185,129,0.12); color:#10b981;">
+        <i class="bi bi-check-circle-fill"></i>
+      </div>
+      <div class="stat-value">{{ active_subs|length }}</div>
+      <div class="stat-label">Active Subscriptions</div>
+    </div>
+  </div>
+</div>
+
+<!-- Subscriptions Table -->
+<div class="glass-card">
+  {% if subscriptions %}
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Service / Bill</th>
+            <th>Category</th>
+            <th>Billing Cycle</th>
+            <th>Next Due Date</th>
+            <th>Payment Via</th>
+            <th class="text-end">Amount</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sub in subscriptions %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div style="width:34px; height:34px; border-radius:10px; background:rgba(108,99,255,0.12); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:1.1rem;">
+                    <i class="bi bi-arrow-repeat"></i>
+                  </div>
+                  <div>
+                    <span class="fw-700">{{ sub.name }}</span>
+                    {% if not sub.is_active %}
+                      <span class="badge bg-secondary-subtle text-muted ms-1" style="font-size:0.65rem;">Paused</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td>
+                {% if sub.category %}
+                  <span class="badge rounded-pill bg-dark-subtle text-muted border px-2 py-1">
+                    <i class="bi {{ sub.category.icon }} me-1" style="color:{{ sub.category.color }};"></i>{{ sub.category.name }}
+                  </span>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge rounded-pill px-2 py-1" style="background:rgba(108,99,255,0.12); color:#a78bfa; font-weight:700;">
+                  {{ sub.get_billing_cycle_display }}
+                </span>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="fw-600">{{ sub.next_due_date|date:"M d, Y" }}</span>
+                  {% if sub.days_until_due < 0 %}
+                    <span class="badge bg-danger-subtle text-danger" style="font-size:0.7rem;">Overdue</span>
+                  {% elif sub.days_until_due <= 3 %}
+                    <span class="badge bg-warning-subtle text-warning" style="font-size:0.7rem;">Due in {{ sub.days_until_due }}d</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td>
+                <span class="small text-muted">{{ sub.payment_method }}</span>
+              </td>
+              <td class="text-end fw-800 text-danger" style="font-size:0.95rem;">
+                {{ currency_symbol }}{{ sub.amount|floatformat:2 }}
+              </td>
+              <td class="text-end">
+                <div class="d-inline-flex align-items-center gap-1">
+                  <form method="post" action="{% url 'subscription_mark_paid' sub.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-ghost btn-sm py-1 px-2 text-success" title="Log expense and advance due date">
+                      <i class="bi bi-check-lg me-1"></i> Pay
+                    </button>
+                  </form>
+                  <a href="{% url 'subscription_edit' sub.pk %}" class="btn btn-ghost btn-sm py-1 px-2" title="Edit">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  <a href="{% url 'subscription_delete' sub.pk %}" class="btn btn-ghost btn-sm py-1 px-2 text-danger" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="text-center py-5" style="color:var(--text-muted);">
+      <i class="bi bi-arrow-repeat" style="font-size:2.5rem; display:block; margin-bottom:0.75rem; color:var(--accent);"></i>
+      <p class="mb-2 fw-700">No active subscriptions tracked yet</p>
+      <a href="{% url 'subscription_create' %}" class="btn btn-accent btn-sm">Add First Subscription</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

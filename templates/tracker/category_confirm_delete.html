@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Delete Category — ExpenseIQ{% endblock %}
+{% block page_title %}Delete Category{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-5">
+    <div class="glass-card" style="border-color:rgba(239,68,68,0.3);">
+      <div style="text-align:center; margin-bottom:1.5rem;">
+        <div style="width:56px;height:56px;border-radius:16px;background:rgba(239,68,68,0.1);color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto 1rem;">
+          <i class="bi bi-trash-fill"></i>
+        </div>
+        <h3 style="font-size:1.1rem; font-weight:600;">Delete "{{ object.name }}"?</h3>
+        {% if expense_count > 0 or budget_count > 0 %}
+          <div class="alert alert-warning text-start my-3" style="background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.3); color:#fbbf24; font-size:0.85rem;">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            This category currently has:
+            <ul class="mb-0 mt-1 ps-3">
+              {% if expense_count > 0 %}<li><strong>{{ expense_count }}</strong> logged expense{{ expense_count|pluralize }}</li>{% endif %}
+              {% if budget_count > 0 %}<li><strong>{{ budget_count }}</strong> monthly budget{{ budget_count|pluralize }}</li>{% endif %}
+            </ul>
+          </div>
+        {% endif %}
+        <p style="color:#64748b; font-size:0.88rem; margin-top:0.5rem;">
+          This will permanently delete this category and <strong style="color:#ef4444;">all associated records</strong>. This action cannot be undone.
+        </p>
+      </div>
+      <form method="post" class="d-flex gap-2 justify-content-center">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm px-4 py-2" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:10px;font-weight:600;">
+          <i class="bi bi-trash-fill me-1"></i> Yes, Delete
+        </button>
+        <a href="{% url 'category_list' %}" class="btn btn-ghost btn-sm px-4 py-2">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

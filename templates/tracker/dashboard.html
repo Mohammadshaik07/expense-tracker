@@ -1,0 +1,545 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — ExpenseIQ Financial Intelligence{% endblock %}
+{% block page_title %}
+  <span>{{ current_month|date:"F Y" }} Wealth & Budget Overview</span>
+{% endblock %}
+
+{% block content %}
+<!-- Header Bar with Month Picker & Quick Actions -->
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <div class="btn-group background-blur" style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:3px;">
+      <a href="?year={{ prev_month.year }}&month={{ prev_month.month }}" class="btn btn-ghost btn-sm border-0" title="Previous Month">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+      <span class="d-flex align-items-center px-3 fw-700 fs-6">
+        <i class="bi bi-calendar3 me-2" style="color:var(--accent);"></i> {{ current_month|date:"F Y" }}
+      </span>
+      <a href="?year={{ next_month.year }}&month={{ next_month.month }}" class="btn btn-ghost btn-sm border-0" title="Next Month">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </div>
+    {% if current_month.month != today.month or current_month.year != today.year %}
+      <a href="{% url 'dashboard' %}" class="btn btn-ghost btn-sm px-3" style="border-radius:12px;">
+        <i class="bi bi-clock-history me-1"></i> Current Month
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <button class="btn btn-accent btn-sm" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+      <i class="bi bi-plus-lg me-1"></i> Quick Add
+    </button>
+    <a href="{% url 'expense_create' %}" class="btn btn-ghost btn-sm">
+      <i class="bi bi-receipt me-1"></i> Log Expense
+    </a>
+    <a href="{% url 'income_create' %}" class="btn btn-ghost btn-sm text-success">
+      <i class="bi bi-cash-stack me-1"></i> Add Income
+    </a>
+  </div>
+</div>
+
+<!-- 4 Primary Stat Cards -->
+<div class="row g-3 mb-4">
+  <!-- 1. Total Spent -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="stat-icon" style="background:rgba(239,68,68,0.12); color:#ef4444;">
+          <i class="bi bi-arrow-up-right-circle-fill"></i>
+        </div>
+        <span class="badge rounded-pill bg-dark border text-muted" style="font-size:0.7rem; font-weight:600;">Monthly Outflow</span>
+      </div>
+      <div class="stat-value text-danger">{{ currency_symbol }}{{ summary.total_spent|floatformat:2 }}</div>
+      <div class="stat-label">Total Spent</div>
+      <div class="mt-2" style="font-size:0.75rem; color:var(--text-muted);">
+        Avg <span class="fw-700" style="color:var(--text-main);">{{ currency_symbol }}{{ summary.daily_avg|floatformat:2 }}/day</span> (Day {{ summary.days_passed }}/{{ summary.days_in_month }})
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Income & Net Cash Flow -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="stat-icon" style="background:rgba(16,185,129,0.12); color:#10b981;">
+          <i class="bi bi-wallet2"></i>
+        </div>
+        <a href="{% url 'income_list' %}" class="text-decoration-none" style="font-size:0.72rem; color:#10b981; font-weight:700;">
+          Income Log <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+      <div class="stat-value text-success">+{{ currency_symbol }}{{ summary.total_income|floatformat:2 }}</div>
+      <div class="stat-label">Total Monthly Income</div>
+      <div class="mt-2 d-flex align-items-center justify-content-between" style="font-size:0.75rem;">
+        <span style="color:var(--text-muted);">Net Cash Flow:</span>
+        <span class="fw-700 {% if summary.net_cash_flow >= 0 %}text-success{% else %}text-danger{% endif %}">
+          {% if summary.net_cash_flow >= 0 %}+{% endif %}{{ currency_symbol }}{{ summary.net_cash_flow|floatformat:2 }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Total Budget Allocated -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="stat-icon" style="background:rgba(168,85,247,0.12); color:#a855f7;">
+          <i class="bi bi-pie-chart-fill"></i>
+        </div>
+        <a href="{% url 'budget_list' %}" class="text-decoration-none" style="font-size:0.72rem; color:#a855f7; font-weight:700;">
+          Budgets <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+      <div class="stat-value">{{ currency_symbol }}{{ summary.total_budget|floatformat:2 }}</div>
+      <div class="stat-label">Total Monthly Budget</div>
+      <div class="mt-2" style="font-size:0.75rem; color:var(--text-muted);">
+        Budget Used: <span class="fw-700" style="color:#a855f7;">{{ summary.overall_percent|floatformat:1 }}%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Remaining Budget & Threshold State -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="stat-icon" style="{% if summary.overall_alert == 'danger' %}background:rgba(239,68,68,0.15); color:#ef4444;{% elif summary.overall_alert == 'warning' %}background:rgba(245,158,11,0.15); color:#f59e0b;{% else %}background:rgba(16,185,129,0.15); color:#10b981;{% endif %}">
+          <i class="bi {% if summary.overall_alert == 'danger' %}bi-exclamation-triangle-fill{% elif summary.overall_alert == 'warning' %}bi-exclamation-circle-fill{% else %}bi-shield-check{% endif %}"></i>
+        </div>
+        <span class="badge rounded-pill badge-state-{{ summary.overall_alert }}" style="font-size:0.72rem; font-weight:700;">
+          {% if summary.overall_alert == 'danger' %}DANGER 100%+{% elif summary.overall_alert == 'warning' %}WARNING 80%+{% else %}HEALTHY{% endif %}
+        </span>
+      </div>
+      <div class="stat-value" style="{% if summary.total_remaining is not None and summary.total_remaining < 0 %}color:#ef4444{% endif %}">
+        {% if summary.total_remaining is not None %}
+          {{ currency_symbol }}{{ summary.total_remaining|floatformat:2 }}
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div class="stat-label">Remaining Safe Budget</div>
+      <div class="mt-2" style="font-size:0.75rem; color:var(--text-muted);">
+        {% if summary.total_remaining is not None and summary.total_remaining < 0 %}
+          <span style="color:#ef4444;" class="fw-700">Over budget by {{ currency_symbol }}{{ summary.total_remaining|floatformat:2|slice:"1:" }}</span>
+        {% else %}
+          Available safe allocation
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Smart Financial Insights Banner -->
+{% if summary.smart_insights %}
+<div class="glass-card mb-4 p-3" style="background:linear-gradient(135deg, rgba(108,99,255,0.06), rgba(168,85,247,0.04));">
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-stars" style="color:var(--accent); font-size:1.2rem;"></i>
+    <span class="fw-800" style="font-size:0.95rem;">Smart Financial Insights & Actionable Alerts</span>
+  </div>
+  <div class="row g-2">
+    {% for insight in summary.smart_insights %}
+      <div class="col-md-6 col-lg-3">
+        <div style="background:var(--input-bg); border:1px solid var(--card-border); border-radius:12px; padding:0.85rem;" class="h-100">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="bi {{ insight.icon }} text-{{ insight.type }}"></i>
+            <span class="fw-700" style="font-size:0.82rem;">{{ insight.title }}</span>
+          </div>
+          <p class="m-0" style="font-size:0.76rem; color:var(--text-muted); line-height:1.4;">{{ insight.message }}</p>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Overall Budget Usage Bar -->
+{% if summary.total_budget > 0 %}
+<div class="glass-card mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-shield-check" style="color:var(--accent); font-size:1.1rem;"></i>
+      <span class="fw-700" style="font-size:0.95rem;">Overall Monthly Budget Utilization</span>
+    </div>
+    <span class="badge rounded-pill px-3 py-1 badge-state-{{ summary.overall_alert }}">
+      {% if summary.overall_alert == 'danger' %}<i class="bi bi-exclamation-triangle-fill me-1"></i>Danger Threshold (100%+)
+      {% elif summary.overall_alert == 'warning' %}<i class="bi bi-exclamation-circle-fill me-1"></i>Warning Alert (80% - 99%)
+      {% else %}<i class="bi bi-check-circle-fill me-1"></i>Healthy Spending (&lt;80%)
+      {% endif %}
+    </span>
+  </div>
+  <div class="d-flex justify-content-between mb-2" style="font-size:0.82rem; color:var(--text-muted); font-weight:600;">
+    <span>{{ currency_symbol }}{{ summary.total_spent|floatformat:2 }} spent of {{ currency_symbol }}{{ summary.total_budget|floatformat:2 }}</span>
+    <span>{{ summary.overall_percent|floatformat:1 }}% consumed</span>
+  </div>
+  <div class="progress" style="height:10px;">
+    <div class="progress-bar progress-bar-{{ summary.overall_alert }}"
+         role="progressbar"
+         style="width:{{ summary.overall_percent }}%"
+         aria-valuenow="{{ summary.overall_percent }}"
+         aria-valuemin="0" aria-valuemax="100"></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Interactive Visualizations Hub -->
+<div class="row g-4 mb-4">
+  <!-- 6-Month Income vs Spending Trend -->
+  <div class="col-lg-8">
+    <div class="glass-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h3 style="font-size:1rem; font-weight:800; margin:0;">6-Month Cash Flow Analytics</h3>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Historical income inflows vs expense outflows</span>
+        </div>
+        <span class="badge bg-dark border text-muted" style="font-size:0.72rem;"><i class="bi bi-activity me-1"></i>Trend</span>
+      </div>
+      <div style="height: 250px; position: relative;">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Expense Share -->
+  <div class="col-lg-4">
+    <div class="glass-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h3 style="font-size:1rem; font-weight:800; margin:0;">Category Distribution</h3>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Current month breakdown</span>
+        </div>
+      </div>
+      <div style="height: 250px; position: relative; display: flex; align-items: center; justify-content: center;">
+        <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Productivity Grid: Recurring Bills & Savings Goals -->
+<div class="row g-4 mb-4">
+  <!-- Upcoming Subscriptions & Bills -->
+  <div class="col-lg-6">
+    <div class="glass-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+          <div style="width:36px; height:36px; border-radius:10px; background:rgba(59,130,246,0.12); color:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:1.1rem;">
+            <i class="bi bi-arrow-repeat"></i>
+          </div>
+          <div>
+            <h3 style="font-size:0.98rem; font-weight:800; margin:0;">Upcoming Bills & Subscriptions</h3>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Due in next 30 days (Commitment: {{ currency_symbol }}{{ summary.monthly_recurring_total|floatformat:2 }}/mo)</span>
+          </div>
+        </div>
+        <a href="{% url 'subscription_create' %}" class="btn btn-ghost btn-sm py-1 px-2" title="Add Subscription">
+          <i class="bi bi-plus-lg"></i>
+        </a>
+      </div>
+
+      {% if summary.upcoming_bills %}
+        <div class="d-flex flex-column gap-2">
+          {% for sub in summary.upcoming_bills %}
+            <div class="d-flex align-items-center justify-content-between p-2 rounded" style="background:var(--input-bg); border:1px solid var(--card-border);">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-clock-history text-warning" style="font-size:1.1rem;"></i>
+                <div>
+                  <div class="fw-700" style="font-size:0.88rem;">{{ sub.name }}</div>
+                  <span style="font-size:0.72rem; color:var(--text-muted);">Due: {{ sub.next_due_date|date:"M d" }} ({{ sub.payment_method }})</span>
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="fw-700 text-danger" style="font-size:0.9rem;">{{ currency_symbol }}{{ sub.amount|floatformat:2 }}</span>
+                <form method="post" action="{% url 'subscription_mark_paid' sub.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-ghost py-1 px-2" title="Mark as Paid">
+                    <i class="bi bi-check-circle-fill text-success"></i> Pay
+                  </button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-4" style="color:var(--text-muted); font-size:0.85rem;">
+          <i class="bi bi-check2-circle text-success" style="font-size:2rem; display:block; margin-bottom:0.4rem;"></i>
+          No upcoming bills due in the next 30 days!
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Active Savings Goals -->
+  <div class="col-lg-6">
+    <div class="glass-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+          <div style="width:36px; height:36px; border-radius:10px; background:rgba(16,185,129,0.12); color:#10b981; display:flex; align-items:center; justify-content:center; font-size:1.1rem;">
+            <i class="bi bi-bullseye"></i>
+          </div>
+          <div>
+            <h3 style="font-size:0.98rem; font-weight:800; margin:0;">Active Financial Goals</h3>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Milestones & wealth accumulation</span>
+          </div>
+        </div>
+        <a href="{% url 'goal_create' %}" class="btn btn-ghost btn-sm py-1 px-2" title="Add Goal">
+          <i class="bi bi-plus-lg"></i>
+        </a>
+      </div>
+
+      {% if summary.active_goals %}
+        <div class="d-flex flex-column gap-3">
+          {% for goal in summary.active_goals %}
+            <div class="p-2 rounded" style="background:var(--input-bg); border:1px solid var(--card-border);">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-700" style="font-size:0.88rem;">{{ goal.title }}</span>
+                <span class="fw-700 text-success" style="font-size:0.84rem;">
+                  {{ currency_symbol }}{{ goal.current_amount|floatformat:0 }} / {{ currency_symbol }}{{ goal.target_amount|floatformat:0 }} ({{ goal.percent_achieved|floatformat:0 }}%)
+                </span>
+              </div>
+              <div class="progress" style="height:6px;">
+                <div class="progress-bar" style="width:{{ goal.percent_achieved }}%; background:{{ goal.color }};"></div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-4" style="color:var(--text-muted); font-size:0.85rem;">
+          <i class="bi bi-trophy" style="font-size:2rem; display:block; margin-bottom:0.4rem; color:var(--accent);"></i>
+          Set your first savings goal (e.g. Emergency Fund, Laptop)!
+          <div class="mt-2">
+            <a href="{% url 'goal_create' %}" class="btn btn-accent btn-sm py-1 px-3">Create Goal</a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Category Breakdown List & Recent Expenses -->
+<div class="row g-4">
+  <!-- Categories Budget & Spending Progress -->
+  <div class="col-xl-7">
+    <div class="glass-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h3 style="font-size:1rem; font-weight:800; margin:0;">Category Limits & Spending Progress</h3>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Threshold alerts and progress indicators</span>
+        </div>
+        <a href="{% url 'budget_create' %}" class="btn btn-ghost btn-sm"><i class="bi bi-plus me-1"></i>Set Budget</a>
+      </div>
+
+      {% if summary.category_rows %}
+        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+          {% for row in summary.category_rows %}
+            <div style="background:var(--input-bg); border:1px solid var(--card-border); border-radius:14px; padding:1rem; transition:all 0.2s;">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex align-items-center gap-2">
+                  <div style="width:32px; height:32px; border-radius:10px; background:rgba(108,99,255,0.15); color:{{ row.category.color }}; display:flex; align-items:center; justify-content:center; font-size:1.05rem;">
+                    <i class="bi {{ row.category.icon }}"></i>
+                  </div>
+                  <span style="font-weight:700; font-size:0.92rem;">{{ row.category.name }}</span>
+                </div>
+                <span class="badge rounded-pill px-2 py-1 badge-state-{{ row.alert }}" style="font-size:0.72rem; font-weight:700;">
+                  {% if row.alert == 'danger' %}<i class="bi bi-exclamation-triangle-fill me-1"></i>Danger Exceeded
+                  {% elif row.alert == 'warning' %}<i class="bi bi-exclamation-circle me-1"></i>Warning 80%+
+                  {% else %}<i class="bi bi-check-circle me-1"></i>Healthy
+                  {% endif %}
+                </span>
+              </div>
+              <div class="d-flex justify-content-between mb-2" style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">
+                <span>{{ currency_symbol }}{{ row.spent|floatformat:2 }} spent</span>
+                {% if row.budget_limit %}
+                  <span>
+                    {% if row.remaining >= 0 %}
+                      <span style="color:#10b981;">{{ currency_symbol }}{{ row.remaining|floatformat:2 }} left</span>
+                    {% else %}
+                      <span style="color:#ef4444;">{{ currency_symbol }}{{ row.remaining|floatformat:2|slice:"1:" }} over</span>
+                    {% endif %}
+                    of {{ currency_symbol }}{{ row.budget_limit|floatformat:2 }}
+                  </span>
+                {% else %}
+                  <a href="{% url 'budget_create' %}" style="color:var(--accent); text-decoration:none; font-size:0.78rem;">+ Set budget limit</a>
+                {% endif %}
+              </div>
+              {% if row.budget_limit %}
+                <div class="progress" style="height:6px;">
+                  <div class="progress-bar progress-bar-{{ row.alert }}"
+                       role="progressbar"
+                       style="width:{{ row.percent }}%"></div>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-5" style="color:var(--text-muted);">
+          <i class="bi bi-tag" style="font-size:2.5rem; display:block; margin-bottom:0.75rem;"></i>
+          <p class="mb-2 fw-600">No categories created yet</p>
+          <a href="{% url 'category_create' %}" class="btn btn-accent btn-sm">Create First Category</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recent Expenses List -->
+  <div class="col-xl-5">
+    <div class="glass-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h3 style="font-size:1rem; font-weight:800; margin:0;">Recent Transactions</h3>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Latest logged expenditures</span>
+        </div>
+        <a href="{% url 'expense_list' %}" class="btn btn-ghost btn-sm">View All <i class="bi bi-arrow-right ms-1"></i></a>
+      </div>
+      {% if recent_expenses %}
+        <div style="display:flex; flex-direction:column; gap:0.6rem;">
+          {% for expense in recent_expenses %}
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 0.9rem; background:var(--input-bg); border-radius:12px; border:1px solid var(--card-border);">
+              <div class="d-flex align-items-center gap-3">
+                <div style="width:36px; height:36px; border-radius:10px; background:rgba(108,99,255,0.12); color:{{ expense.category.color }}; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0;">
+                  <i class="bi {{ expense.category.icon }}"></i>
+                </div>
+                <div>
+                  <div style="font-weight:700; font-size:0.88rem;">{{ expense.category.name }}</div>
+                  <div style="font-size:0.75rem; color:var(--text-muted);">
+                    {{ expense.date|date:"M d, Y" }}
+                    {% if expense.payment_method %} · <span class="badge bg-dark-subtle text-muted" style="font-size:0.68rem;">{{ expense.payment_method }}</span>{% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="text-end">
+                <div style="font-weight:800; font-size:0.95rem; color:#ef4444;">-{{ currency_symbol }}{{ expense.amount|floatformat:2 }}</div>
+                {% if expense.notes %}
+                  <div style="font-size:0.72rem; color:var(--text-muted); max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ expense.notes }}</div>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-5" style="color:var(--text-muted);">
+          <i class="bi bi-receipt" style="font-size:2.5rem; display:block; margin-bottom:0.75rem;"></i>
+          <p class="mb-2 fw-600">No expenses logged for this month</p>
+          <a href="{% url 'expense_create' %}" class="btn btn-accent btn-sm">Log First Expense</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Chart initialization scripts -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const currencySymbol = "{{ currency_symbol|escapejs }}";
+
+    // 1. Monthly Spending & Income Trend Chart
+    const trendData = JSON.parse('{{ trend_chart_json|escapejs }}');
+    const trendCtx = document.getElementById('trendChart');
+
+    if (trendCtx && trendData.labels) {
+      new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels: trendData.labels,
+          datasets: [
+            {
+              label: 'Expenses (' + currencySymbol + ')',
+              data: trendData.expenses || trendData.data,
+              borderColor: '#ef4444',
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              borderWidth: 2.5,
+              fill: true,
+              tension: 0.35,
+              pointBackgroundColor: '#ef4444',
+              pointRadius: 4
+            },
+            {
+              label: 'Income (' + currencySymbol + ')',
+              data: trendData.income || [],
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              borderWidth: 2.5,
+              fill: true,
+              tension: 0.35,
+              pointBackgroundColor: '#10b981',
+              pointRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', size: 11 }, usePointStyle: true }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ' ' + context.dataset.label + ': ' + currencySymbol + context.parsed.y.toFixed(2);
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 11 } }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: '#64748b',
+                font: { family: 'Plus Jakarta Sans', size: 11 },
+                callback: function(val) { return currencySymbol + val; }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. Category Share Doughnut Chart
+    const catData = JSON.parse('{{ category_chart_json|escapejs }}');
+    const catCtx = document.getElementById('categoryChart');
+
+    if (catCtx) {
+      if (catData.labels.length > 0) {
+        new Chart(catCtx, {
+          type: 'doughnut',
+          data: {
+            labels: catData.labels,
+            datasets: [{
+              data: catData.values,
+              backgroundColor: catData.colors,
+              borderWidth: 2,
+              borderColor: 'transparent'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '72%',
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', size: 11 }, usePointStyle: true, padding: 12 }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return ' ' + context.label + ': ' + currencySymbol + context.parsed.toFixed(2);
+                  }
+                }
+              }
+            }
+          }
+        });
+      } else {
+        catCtx.parentElement.innerHTML = '<div class="text-center text-muted" style="font-size:0.85rem;"><i class="bi bi-pie-chart" style="font-size:2rem; display:block; margin-bottom:0.5rem;"></i>No expenses to display chart</div>';
+      }
+    }
+  });
+</script>
+{% endblock %}

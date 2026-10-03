@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Expense — ExpenseIQ{% endblock %}
+{% block page_title %}{{ action }} Expense{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6 col-xl-5">
+    <div class="glass-card">
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg, var(--accent), #a855f7); color:white; display:flex; align-items:center; justify-content:center; font-size:1.2rem; box-shadow:0 4px 15px rgba(108,99,255,0.4);">
+          <i class="bi bi-receipt"></i>
+        </div>
+        <div>
+          <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:#f8fafc;">{{ action }} Expense Log</h3>
+          <span style="font-size:0.78rem; color:#64748b;">Record your financial outflow accurately</span>
+        </div>
+      </div>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6">
+            <label class="form-label">Amount ({{ currency_symbol }})</label>
+            {{ form.amount }}
+            <div class="d-flex gap-1 mt-2">
+              <button type="button" class="btn btn-ghost btn-sm py-0 px-2 flex-grow-1" style="font-size:0.75rem;" onclick="addAmount(100)">+100</button>
+              <button type="button" class="btn btn-ghost btn-sm py-0 px-2 flex-grow-1" style="font-size:0.75rem;" onclick="addAmount(500)">+500</button>
+              <button type="button" class="btn btn-ghost btn-sm py-0 px-2 flex-grow-1" style="font-size:0.75rem;" onclick="addAmount(1000)">+1000</button>
+            </div>
+            {% if form.amount.errors %}
+              <div class="mt-1" style="font-size:0.8rem; color:#ef4444;">
+                {% for error in form.amount.errors %}<div>{{ error }}</div>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">Date</label>
+            {{ form.date }}
+            {% if form.date.errors %}
+              <div class="mt-1" style="font-size:0.8rem; color:#ef4444;">
+                {% for error in form.date.errors %}<div>{{ error }}</div>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6">
+            <label class="form-label">Category</label>
+            {{ form.category }}
+            {% if form.category.errors %}
+              <div class="mt-1" style="font-size:0.8rem; color:#ef4444;">
+                {% for error in form.category.errors %}<div>{{ error }}</div>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">Payment Method</label>
+            {{ form.payment_method }}
+            {% if form.payment_method.errors %}
+              <div class="mt-1" style="font-size:0.8rem; color:#ef4444;">
+                {% for error in form.payment_method.errors %}<div>{{ error }}</div>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">Notes / Merchant <span style="color:#64748b; font-weight:normal;">(optional)</span></label>
+          {{ form.notes }}
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-accent flex-grow-1 py-2">
+            <i class="bi bi-check-lg me-1"></i> {{ action }} Expense
+          </button>
+          <a href="{% url 'expense_list' %}" class="btn btn-ghost px-4 py-2">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function addAmount(val) {
+    const input = document.querySelector('input[name="amount"]');
+    if (input) {
+      let curr = parseFloat(input.value) || 0;
+      input.value = (curr + val).toFixed(2);
+    }
+  }
+</script>
+{% endblock %}

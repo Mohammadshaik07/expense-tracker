@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% block title %}Expense Log — ExpenseIQ{% endblock %}
+{% block page_title %}Expense Log{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+  <div>
+    <h1 style="font-size:1.4rem; font-weight:800; margin:0; color:#f8fafc;">Expense Tracker & Log</h1>
+    <p style="color:#64748b; margin:0; font-size:0.85rem;">Filter, search, export, and analyze all your logged expenses.</p>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <!-- Import CSV Button -->
+    <a href="{% url 'import_expenses_csv' %}" class="btn btn-ghost btn-sm">
+      <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
+    </a>
+    <!-- Export CSV Button -->
+    <a href="{% url 'export_expenses_csv' %}?q={{ q }}&category={{ selected_category }}&period={{ period }}&sort={{ sort }}" class="btn btn-ghost btn-sm">
+      <i class="bi bi-download me-1"></i> Export CSV
+    </a>
+    <!-- Open Quick Add Modal Button -->
+    <button type="button" class="btn btn-accent btn-sm" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+      <i class="bi bi-plus-lg me-1"></i> Log Expense
+    </button>
+  </div>
+</div>
+
+<!-- Summary Metric Cards for Filtered Set -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="stat-card p-3">
+      <div class="stat-label">Filtered Spending</div>
+      <div class="stat-value text-accent" style="font-size:1.4rem; color:#ef4444;">{{ currency_symbol }}{{ total_amount|floatformat:2 }}</div>
+      <div style="font-size:0.75rem; color:#64748b;" class="mt-1">Total in view</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card p-3">
+      <div class="stat-label">Total Transactions</div>
+      <div class="stat-value" style="font-size:1.4rem;">{{ count }}</div>
+      <div style="font-size:0.75rem; color:#64748b;" class="mt-1">Logged records</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card p-3">
+      <div class="stat-label">Average Expense</div>
+      <div class="stat-value" style="font-size:1.4rem; color:#a855f7;">{{ currency_symbol }}{{ avg_amount|floatformat:2 }}</div>
+      <div style="font-size:0.75rem; color:#64748b;" class="mt-1">Per transaction</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card p-3">
+      <div class="stat-label">Highest Expense</div>
+      <div class="stat-value" style="font-size:1.4rem; color:#3b82f6;">{{ currency_symbol }}{{ max_amount|floatformat:2 }}</div>
+      <div style="font-size:0.75rem; color:#64748b;" class="mt-1">Single max log</div>
+    </div>
+  </div>
+</div>
+
+<!-- Search & Filter Bar Card -->
+<div class="glass-card mb-4">
+  <form method="get" class="row g-3 align-items-end">
+    <!-- Search Query -->
+    <div class="col-md-4 col-lg-3">
+      <label class="form-label">Search Notes / Category</label>
+      <div class="input-group">
+        <span class="input-group-text bg-transparent border-secondary text-muted" style="border-right:none; background:rgba(255,255,255,0.04)!important;"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" value="{{ q }}" class="form-control" style="border-left:none;" placeholder="Type keywords...">
+      </div>
+    </div>
+
+    <!-- Category Filter -->
+    <div class="col-md-4 col-lg-2">
+      <label class="form-label">Category</label>
+      <select name="category" class="form-select">
+        <option value="">All Categories</option>
+        {% for cat in categories %}
+          <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Period Filter -->
+    <div class="col-md-4 col-lg-2">
+      <label class="form-label">Time Period</label>
+      <select name="period" class="form-select">
+        <option value="all" {% if period == 'all' %}selected{% endif %}>All Time</option>
+        <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>This Month</option>
+        <option value="last_month" {% if period == 'last_month' %}selected{% endif %}>Last Month</option>
+        <option value="30_days" {% if period == '30_days' %}selected{% endif %}>Last 30 Days</option>
+      </select>
+    </div>
+
+    <!-- Sort Selector -->
+    <div class="col-md-4 col-lg-2">
+      <label class="form-label">Sort By</label>
+      <select name="sort" class="form-select">
+        <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Date (Newest)</option>
+        <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Date (Oldest)</option>
+        <option value="amount_desc" {% if sort == 'amount_desc' %}selected{% endif %}>Amount (High to Low)</option>
+        <option value="amount_asc" {% if sort == 'amount_asc' %}selected{% endif %}>Amount (Low to High)</option>
+      </select>
+    </div>
+
+    <!-- Actions -->
+    <div class="col-md-4 col-lg-3 d-flex gap-2">
+      <button type="submit" class="btn btn-accent flex-grow-1">
+        <i class="bi bi-funnel-fill me-1"></i> Filter
+      </button>
+      <a href="{% url 'expense_list' %}" class="btn btn-ghost" title="Reset Filters">
+        <i class="bi bi-arrow-counterclockwise"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<!-- Expenses Table Card -->
+{% if expenses %}
+  <div class="glass-card mb-4 p-0" style="overflow:hidden;">
+    <div class="table-responsive">
+      <table class="data-table mb-0" style="border-spacing:0;">
+        <thead>
+          <tr style="background:rgba(255,255,255,0.02);">
+            <th class="ps-4">Date</th>
+            <th>Category</th>
+            <th>Notes</th>
+            <th>Payment Method</th>
+            <th class="text-end">Amount</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for expense in expenses %}
+            <tr>
+              <td class="ps-4" style="color:var(--text-muted); font-weight:600;">
+                <i class="bi bi-calendar-event me-2" style="color:var(--accent);"></i>
+                {{ expense.date|date:"M d, Y" }}
+              </td>
+              <td>
+                <span style="background:rgba(108,99,255,0.12); color:{{ expense.category.color }}; border:1px solid rgba(108,99,255,0.25); padding:0.25rem 0.75rem; border-radius:30px; font-size:0.8rem; font-weight:700;">
+                  <i class="bi {{ expense.category.icon }} me-1" style="font-size:0.75rem;"></i> {{ expense.category.name }}
+                </span>
+              </td>
+              <td style="color:var(--text-muted); max-width:240px;">
+                {% if expense.notes %}
+                  <span>{{ expense.notes }}</span>
+                {% else %}
+                  <span style="font-style:italic;">No notes</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge bg-dark-subtle text-muted border px-2 py-1" style="font-size:0.72rem;">
+                  {{ expense.payment_method|default:"UPI / Card" }}
+                </span>
+              </td>
+              <td class="text-end">
+                <span style="font-weight:800; color:#ef4444; font-size:1.05rem;">
+                  -{{ currency_symbol }}{{ expense.amount|floatformat:2 }}
+                </span>
+              </td>
+              <td class="text-end pe-4">
+                <div class="d-flex justify-content-end gap-1">
+                  <a href="{% url 'expense_edit' expense.pk %}" class="btn btn-ghost btn-sm px-2" title="Edit Expense">
+                    <i class="bi bi-pencil-fill" style="color:#a78bfa;"></i>
+                  </a>
+                  <a href="{% url 'expense_delete' expense.pk %}" class="btn btn-sm px-2 btn-ghost text-danger border-danger-subtle" title="Delete Expense">
+                    <i class="bi bi-trash-fill"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+
+    <!-- Pagination Footer -->
+    {% if page_obj.has_other_pages %}
+      <div class="d-flex justify-content-between align-items-center p-3 border-top" style="border-color:var(--card-border)!important; background:rgba(255,255,255,0.01);">
+        <div style="font-size:0.8rem; color:#64748b;">
+          Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ count }} total expenses)
+        </div>
+        <ul class="pagination pagination-sm m-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link bg-dark text-light border-secondary" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&category={{ selected_category }}&period={{ period }}&sort={{ sort }}">&laquo; Prev</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link bg-dark text-muted border-secondary">&laquo; Prev</span></li>
+          {% endif %}
+
+          <li class="page-item active">
+            <span class="page-link bg-primary border-primary">{{ page_obj.number }}</span>
+          </li>
+
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link bg-dark text-light border-secondary" href="?page={{ page_obj.next_page_number }}&q={{ q }}&category={{ selected_category }}&period={{ period }}&sort={{ sort }}">Next &raquo;</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link bg-dark text-muted border-secondary">Next &raquo;</span></li>
+          {% endif %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+{% else %}
+  <!-- Empty State -->
+  <div class="glass-card text-center py-5">
+    <div style="width:64px; height:64px; border-radius:50%; background:rgba(108,99,255,0.12); color:#6c63ff; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem; font-size:2rem;">
+      <i class="bi bi-receipt-cutoff"></i>
+    </div>
+    <h3 style="font-size:1.15rem; font-weight:700; color:#f8fafc; margin-bottom:0.5rem;">No expenses found</h3>
+    <p style="color:#64748b; font-size:0.88rem; margin-bottom:1.5rem; max-width:400px; margin-left:auto; margin-right:auto;">
+      {% if q or selected_category or period != 'all' %}
+        No expense records match your active search filters. Try adjusting or resetting your filter criteria.
+      {% else %}
+        You haven't logged any expenses yet. Start tracking your daily financial logs today!
+      {% endif %}
+    </p>
+    <div class="d-flex justify-content-center gap-2">
+      {% if q or selected_category or period != 'all' %}
+        <a href="{% url 'expense_list' %}" class="btn btn-ghost">Reset Filters</a>
+      {% endif %}
+      <button type="button" class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+        <i class="bi bi-plus-lg me-1"></i> Log Expense Now
+      </button>
+    </div>
+  </div>
+{% endif %}
+
+
+<!-- Quick Add Expense Modal -->
+<div class="modal fade" id="quickAddModal" tabindex="-1" aria-labelledby="quickAddModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:rgba(22, 23, 39, 0.95); backdrop-filter:blur(20px); border:1px solid var(--card-border); border-radius:20px; color:#f8fafc;">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-700" id="quickAddModalLabel">
+          <i class="bi bi-lightning-charge-fill me-2" style="color:#6c63ff;"></i> Quick Log Expense
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{% url 'expense_create' %}" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="expense_list">
+        <div class="modal-body pt-3">
+          <div class="row g-3 mb-3">
+            <!-- Amount -->
+            <div class="col-sm-6">
+              <label class="form-label">Amount ({{ currency_symbol }})</label>
+              {{ quick_form.amount }}
+              <div class="d-flex gap-1 mt-2">
+                <button type="button" class="btn btn-ghost btn-sm py-0 px-2 flex-grow-1" style="font-size:0.75rem;" onclick="addQuickAmount(100)">+100</button>
+                <button type="button" class="btn btn-ghost btn-sm py-0 px-2 flex-grow-1" style="font-size:0.75rem;" onclick="addQuickAmount(500)">+500</button>
+                <button type="button" class="btn btn-ghost btn-sm py-0 px-2 flex-grow-1" style="font-size:0.75rem;" onclick="addQuickAmount(1000)">+1000</button>
+              </div>
+            </div>
+            <!-- Date -->
+            <div class="col-sm-6">
+              <label class="form-label">Date</label>
+              {{ quick_form.date }}
+            </div>
+          </div>
+          <!-- Category -->
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            {{ quick_form.category }}
+          </div>
+          <!-- Notes -->
+          <div class="mb-2">
+            <label class="form-label">Notes / Description <span class="text-muted fw-normal">(optional)</span></label>
+            {{ quick_form.notes }}
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-accent px-4">
+            <i class="bi bi-check-lg me-1"></i> Save Expense
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function addQuickAmount(val) {
+    const input = document.querySelector('#quickAddModal input[name="amount"]') || document.querySelector('input[name="amount"]');
+    if (input) {
+      let curr = parseFloat(input.value) || 0;
+      input.value = (curr + val).toFixed(2);
+    }
+  }
+</script>
+{% endblock %}

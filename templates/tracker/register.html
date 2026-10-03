@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block auth_content %}
+<div class="auth-wrapper">
+  <div class="auth-card" style="max-width:480px;">
+    <div class="auth-logo"><i class="bi bi-wallet2"></i></div>
+    <h2 class="text-center fw-700 mb-1" style="font-size:1.5rem;">Create account</h2>
+    <p class="text-center mb-4" style="color:#64748b; font-size:0.9rem;">Start tracking your finances for free</p>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <div class="mt-1" style="font-size:0.8rem; color:#ef4444;">
+              {% for error in field.errors %}<div>{{ error }}</div>{% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-accent w-100 py-2 mt-2">
+        <i class="bi bi-person-plus-fill me-2"></i>Create Account
+      </button>
+    </form>
+
+    <hr style="border-color:rgba(255,255,255,0.07); margin: 1.5rem 0;" />
+    <p class="text-center mb-0" style="font-size:0.88rem; color:#64748b;">
+      Already have an account?
+      <a href="{% url 'login' %}" style="color:#6c63ff; font-weight:600; text-decoration:none;">Sign in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
