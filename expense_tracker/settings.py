@@ -5,11 +5,16 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-SECRET_KEY = 'django-insecure-expense-tracker-secret-key-change-in-production'
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-expense-tracker-secret-key-change-in-production'
+)
 
-DEBUG = True
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -23,6 +28,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files in production
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -72,9 +78,22 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+# Suppress W042 warnings — use BigAutoField as default PK type
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# ── Static files (CSS, JavaScript, Images) ────────────────────────────────────
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # collectstatic target
+os.makedirs(STATIC_ROOT, exist_ok=True)
+
+# Only include the local static dir if it actually exists (avoids StaticFilesError)
+_STATIC_DIR = os.path.join(BASE_DIR, 'static')
+STATICFILES_DIRS = [_STATIC_DIR] if os.path.isdir(_STATIC_DIR) else []
+
+# WhiteNoise compression & caching for production
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# ── Authentication redirects ───────────────────────────────────────────────────
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
